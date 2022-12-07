@@ -6,9 +6,9 @@
 
 shopt -s extglob
 
-pkgname=pandoc-static-git
-_pkgname="${pkgname%-static-git}"
-pkgver=2.18.r1.g4c8ad1fba
+pkgname=pandoc-static
+_pkgname="${pkgname%-static}"
+pkgver=2.19.2
 pkgrel=1
 pkgdesc='Conversion between markup formats (static build, dynamic Lua support)'
 url='https://pandoc.org'
@@ -17,27 +17,19 @@ arch=('x86_64')
 optdepends=('texlive-core: for pdf output')
 conflicts=('haskell-pandoc' 'pandoc' 'pandoc-bin')
 replaces=('haskell-pandoc' 'pandoc' 'pandoc-bin')
-provides=("pandoc=${pkgver%%*([a-z]).r*}")
+provides=("pandoc")
 makedepends=('stack>=1.7.0')
-source=("git+https://github.com/jgm/pandoc.git")
-sha512sums=('SKIP')
+source=("https://hackage.haskell.org/packages/archive/${_pkgname}/${pkgver}/${_pkgname}-${pkgver}.tar.gz")
+sha512sums=('3628a9193d5138294bae562726bcd94567eec10fa0053d43739af04d4eba0a53bd49c2c000a5360afcac08153960a9bf2ee4be3c419cec7e5c13273e718edc80')
 
-pkgver() {
-    cd "$_pkgname"
-    eval "$(git for-each-ref --shell --sort=creatordate \
-        --format 'git tag --force %(refname:lstrip=-1)rc %(refname)' \
-        'refs/**/rc/*' | tail -n1)"
-    git describe --tags --long | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+prepare() {
+    cd "$_pkgname-$pkgver"
+    # TODO: find a better solution
+    sed -i "s|let env' = dynlibEnv ++ |let env' = dynlibEnv ++ [(\"LD_LIBRARY_PATH\", \"$PWD/dist/build\")] ++ |" test/Tests/Command.hs
 }
 
-# prepare() {
-#     cd "$_pkgname"
-#     # TODO: find a better solution
-#     sed -i "s|let env' = dynlibEnv ++ |let env' = dynlibEnv ++ [(\"LD_LIBRARY_PATH\", \"$PWD/dist/build\")] ++ |" test/Tests/Command.hs
-# }
-
 build() {
-    cd "$_pkgname"
+    cd "$_pkgname-$pkgver"
 
     stack setup
     stack build \
@@ -48,7 +40,7 @@ build() {
 }
 
 package() {
-    cd "$_pkgname"
+    cd "$_pkgname-$pkgver"
     find ./ -path '*/dist/*' -type f -name pandoc -perm /u+x \
         -execdir install -Dm755 -t "$pkgdir/usr/bin/" {} \;
     install -Dm644 man/pandoc.1 "${pkgdir}"/usr/share/man/man1/pandoc.1
